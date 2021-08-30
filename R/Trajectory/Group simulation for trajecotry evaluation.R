@@ -1,16 +1,5 @@
 setwd("E:/Dropbox/scRNA-deconvolution/Splatter simulator/Data from Tung")
 
-Tung <- read.table("Tung.txt",sep="\t",header=T,row.names=1)
-counts <- as.matrix(Tung)
-
-setwd("E:\\Dropbox\\Qinfei\\Simulation of SC based on splatter\\Other methods\\Group simulation")
-
-res <- fun(counts.matrix = counts)
-save(res, file=paste0("Tung.group.simulation.RData"))
-
-
-
-
 
 library("monocle")
 library(Rcpp)
