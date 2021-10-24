@@ -1,3 +1,5 @@
+## the functions below show how simulation data were generated for DE analysis methods. Also, after DE analyses were conducted with 
+## methods including edgeR, DESeq2. Limma-voom, MAST, ZINB-Wave.edgeR, ZINB-Wave.DESeq2 and ZINB-Wave.limma_voom, how we describe the evaluation results
 
 library("Biobase")
 library(splatter)
@@ -20,9 +22,6 @@ nGenes <- params1@nGenes
 
 base_allcellmeans=rgamma(nGenes, shape=params1@mean.shape, rate = params1@mean.rate)
 res <- SCRIPsimu(data=expre_data_sub,params=params1)
-
-
-
 
 
 
