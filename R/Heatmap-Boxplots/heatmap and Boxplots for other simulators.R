@@ -1,63 +1,6 @@
-library("edgeR")
-##plot the mean variance plot using CPM
-gen_mean_variance <- function(data, type){
-  data <- cpm(data,log = T,prior.count = 1)
-  mean_variance <- matrix(rep(0,3*nrow(data)),nrow=nrow(data))
-  mean_variance[,1] <- apply(data,1,mean)
-  mean_variance[,2] <- apply(data,1,var)
-  mean_variance <- as.data.frame(mean_variance)
-  colnames(mean_variance) <- c("mean","variance","Type") 
-  mean_variance[,3] <- type
-  return(mean_variance) 
-}
-
-
-##plot the mean-variance plot using log(counts+1)
-gen_mean_variance_logcounts <- function(data,type){
-  data_CPM <- cpm(data,log=T,prior.count=1)
-  mean_variance <- matrix(rep(0,3*nrow(data)),nrow=nrow(data))
-  mean_variance[,1] <- apply(log2(data+1),1,mean)
-  mean_variance[,2] <- apply(data_CPM,1,var)
-  mean_variance <- as.data.frame(mean_variance)
-  colnames(mean_variance) <- c("mean","variance","Type") 
-  mean_variance[,3] <- type
-  return(mean_variance) 
-}
-
-
-gen_sum_cell_counts <- function(data,type){
-  sum_cell_counts <- matrix(rep(0,2*ncol(data)),nrow=ncol(data))
-  sum_cell_counts[,1] <- apply(data,2,sum)
-  sum_cell_counts <- as.data.frame(sum_cell_counts)
-  colnames(sum_cell_counts) <- c("Sum_count","Type") 
-  sum_cell_counts[,2] <- type
-  return(sum_cell_counts) 
-}
-
-
-gen_meancounts_zeropercent <- function(data,type){
-  mean_zero <- matrix(rep(0,4*nrow(data)),nrow=nrow(data))
-  mean_zero[,1] <- apply(data,1,mean)
-  mean_zero[,2] <- apply(data==0,1,sum)
-  mean_zero[,3] <- 100*mean_zero[,2]/ncol(data)
-  mean_zero <- as.data.frame(mean_zero)
-  colnames(mean_zero) <- c("Mean_count","counts_zeros","Percentage_zeros","Type") 
-  mean_zero[,4] <- type
-  return(mean_zero) 
-}
-
-
-gen_meancounts_zeropercent_percell <- function(data,type){
-  mean_zero <- matrix(rep(0,3*ncol(data)),nrow=ncol(data))
-  mean_zero[,1] <- apply(data==0,2,sum)
-  mean_zero[,2] <- 100*mean_zero[,1]/nrow(data)
-  mean_zero <- as.data.frame(mean_zero)
-  colnames(mean_zero) <- c("counts_zeros","Percentage_zeros","Type") 
-  mean_zero[,3] <- type
-  return(mean_zero) 
-}
-
-
+## Below are R functions and detailed analysis steps to evaluate simulation data from outstanding methods in SCRIP (GP-trendedBCV, BGP-trendedBCV) and 
+## other simulators using MAD with five characteristics (i.e., gene-wise expression mean, variance, cell-wise zero proportion,
+## gene-wise zero proportion, and library size) in eight real datasets (Xin, Klein, Tung, Camp,Tirosh, Zhou, Seale human, Seale mouse).
 
 
 library("edgeR")
@@ -74,19 +17,7 @@ gen_mean_variance <- function(data, type){
 }
 
 
-##plot the mean-variance plot using log(counts+1)
-gen_mean_variance_logcounts <- function(data,type){
-  data_CPM <- cpm(data,log=T,prior.count=1)
-  mean_variance <- matrix(rep(0,3*nrow(data)),nrow=nrow(data))
-  mean_variance[,1] <- apply(log2(data+1),1,mean)
-  mean_variance[,2] <- apply(data_CPM,1,var)
-  mean_variance <- as.data.frame(mean_variance)
-  colnames(mean_variance) <- c("mean","variance","Type") 
-  mean_variance[,3] <- type
-  return(mean_variance) 
-}
-
-
+## Calculate library size
 gen_sum_cell_counts <- function(data,type){
   sum_cell_counts <- matrix(rep(0,2*ncol(data)),nrow=ncol(data))
   sum_cell_counts[,1] <- apply(data,2,sum)
@@ -97,6 +28,7 @@ gen_sum_cell_counts <- function(data,type){
 }
 
 
+## Calculate zero proportion per gene
 gen_meancounts_zeropercent <- function(data,type){
   mean_zero <- matrix(rep(0,4*nrow(data)),nrow=nrow(data))
   mean_zero[,1] <- apply(data,1,mean)
@@ -109,6 +41,7 @@ gen_meancounts_zeropercent <- function(data,type){
 }
 
 
+## Calculate zero proportion per cell
 gen_meancounts_zeropercent_percell <- function(data,type){
   mean_zero <- matrix(rep(0,3*ncol(data)),nrow=ncol(data))
   mean_zero[,1] <- apply(data==0,2,sum)
@@ -122,6 +55,10 @@ gen_meancounts_zeropercent_percell <- function(data,type){
 
 
 
+# Below We evaluated the performance of simulation data from outstanding methods in SCRIP (GP-trendedBCV, BGP-trendedBCV) and other simulators
+# to recover the key characteristics in real datasets. Characteristics included gene-wise expression mean, variance, cell-wise zero proportion,
+# gene-wise zero proportion, and library size. To know more details about how to use SCRIP generate these simulation data,  # 
+# you can check https://github.com/thecailab/SCRIP/blob/main/vignettes/SCRIPsimu.pdf #
 
 
 Gen_heatmatdata <- function(expre_data_params,simu_GP,simu_BGP, simu_scDesign,simu_scDD,simu_SPARSim,simu_powsimR,simu_dyngen,simu_SymSim){
@@ -426,6 +363,12 @@ Heatmap_data_SealeH <- get(load(paste0(dir,"\\Seale\\Human\\heatmap_data.RData")
 Heatmap_data_SealeM <- get(load(paste0(dir,"\\Seale\\Mice\\heatmap_data.RData")))
 
 
+
+
+
+#### Now plot the heatmap (Figure S2) of MAD with five characteristics for differert methods in SCRIP and eight datasets ####
+#############################################################################################################################
+
 Heatmap_data <- rbind(Heatmap_data_MuSiC,Heatmap_data_Klein,Heatmap_data_Tung,Heatmap_data_Camp,
                       Heatmap_data_Tirosh,Heatmap_data_Zhou,Heatmap_data_SealeH,Heatmap_data_SealeM)
 Heatmap_data <- Heatmap_data[,-c(4,7)]
@@ -462,6 +405,9 @@ data1 <- data.frame(value=c(as.vector(data[1:8,1:ncol(data)]),as.vector(data[9:1
 data1$type <- factor(data1$type, levels = c(c("Mean","Variance","library size","Zeros per cell","Zeros per gene")))
 
 
+
+#### transfer the heatmap into boxplots (Figure 3B) and heatmap with only variance (Figure 3C) 
+################################################################################################
 
 library("ggplot2")
 setwd("E:\\DB\\Dropbox\\Qinfei\\Simulation of SC based on splatter\\Submition\\Bioinformatics\\Simulation data")

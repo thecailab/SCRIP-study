@@ -1,3 +1,8 @@
+## Below are R functions and detailed analysis steps to evaluate simulation data from SCRIP using MAD with five characteristics 
+## (i.e., gene-wise expression mean, variance, cell-wise zero proportion, gene-wise zero proportion, and library size) in
+## eight real datasets (Xin, Klein, Tung, Camp, Tirosh, Zhou, Seale human, Seale mouse).
+
+
 ##plot the mean variance plot using CPM
 gen_mean_variance <- function(data,type){
   library(edgeR)
@@ -11,20 +16,7 @@ gen_mean_variance <- function(data,type){
   return(mean_variance) 
 }
 
-
-##plot the mean-variance plot using log(counts+1)
-gen_mean_variance_logcounts <- function(data,type){
-  data_CPM <- cpm(data,log=T,prior.count=1)
-  mean_variance <- matrix(rep(0,3*nrow(data)),nrow=nrow(data))
-  mean_variance[,1] <- apply(log2(data+1),1,mean)
-  mean_variance[,2] <- apply(data_CPM,1,var)
-  mean_variance <- as.data.frame(mean_variance)
-  colnames(mean_variance) <- c("mean","variance","Type") 
-  mean_variance[,3] <- type
-  return(mean_variance) 
-}
-
-
+## Calculate library size
 gen_sum_cell_counts <- function(data,type){
   sum_cell_counts <- matrix(rep(0,2*ncol(data)),nrow=ncol(data))
   sum_cell_counts[,1] <- apply(data,2,sum)
@@ -35,6 +27,7 @@ gen_sum_cell_counts <- function(data,type){
 }
 
 
+## Calculate zero proportion per gene
 gen_meancounts_zeropercent <- function(data,type){
   mean_zero <- matrix(rep(0,4*nrow(data)),nrow=nrow(data))
   mean_zero[,1] <- apply(data,1,mean)
@@ -47,6 +40,7 @@ gen_meancounts_zeropercent <- function(data,type){
 }
 
 
+## Calculate zero proportion per cell
 gen_meancounts_zeropercent_percell <- function(data,type){
   mean_zero <- matrix(rep(0,3*ncol(data)),nrow=ncol(data))
   mean_zero[,1] <- apply(data==0,2,sum)
@@ -170,8 +164,6 @@ Gen_heatmatdata <- function(res){
                                "GP_trendedBCV","BP",
                                "BGP_commonBCV","BGP_trendedBCV"),c("x","LibrarySize")]
   
-
-  
   ##plot the Percentage zeros per gene  box plot
   real_mean_zero <- gen_meancounts_zeropercent(data=expre_data_params,type="Real")
   simu_bursting_mean_zero <- gen_meancounts_zeropercent(data=bursting, type="BGP_trendedBCV")
@@ -281,10 +273,16 @@ Gen_heatmatdata <- function(res){
 
 
 
-#######Klein data####
-#####################
-#####################
-#### Klein ####
+
+# Below We evaluated the performance of simulation data from SCIRP to recover the key characteristics from #
+# real data. Characteristics included gene-wise expression mean, variance, cell-wise zero proportion, #
+# gene-wise zero proportion, and library size. To know more details about how to use SCRIP generate these # 
+# simulation data, you can check https://github.com/thecailab/SCRIP/blob/main/vignettes/SCRIPsimu.pdf # 
+
+
+################################################# Klein data ##############################################
+###########################################################################################################
+###########################################################################################################
 setwd("E:/DB/Dropbox/Qinfei/Simulation of SC based on splatter/Submition/Bioinformatics/Simulation data/Klein")
 library("Biobase")
 library('edgeR')
@@ -682,11 +680,13 @@ tran_data <- function(data){
 }
 
 
+#### Now plot the heatmap (Figure S1) of MAD with five characteristics for differert methods in SCRIP and eight datasets ####
+#############################################################################################################################
 setwd("E:\\DB\\Dropbox\\Qinfei\\Simulation of SC based on splatter\\Submition\\Bioinformatics\\Simulation data")
 # load("Heatmap_data.RData")
-load("Heatmap_data_mean.RData")
-# Heatmap_data <- rbind(Heatmap_data_MuSiC,Heatmap_data_Klein,Heatmap_data_Tung,Heatmap_data_Camp,
-#                       Heatmap_data_Tirosh,Heatmap_data_Zhou,Heatmap_data_Seale_Human,Heatmap_data_Seale_Mice)
+# load("Heatmap_data_mean.RData")
+Heatmap_data <- rbind(Heatmap_data_MuSiC,Heatmap_data_Klein,Heatmap_data_Tung,Heatmap_data_Camp,
+                      Heatmap_data_Tirosh,Heatmap_data_Zhou,Heatmap_data_Seale_Human,Heatmap_data_Seale_Mice)
 rownames(Heatmap_data) <- paste0(rep(c("Xin","Klein","Tung","Camp","Tirosh","Zhou","Seale(Human)","Seale(Mice)"),each=5),
                                  rep(c("Mean","Variance","library size","Zeros per gene","Zeros per cell"),8))
 cols = colorRampPalette(c("royalblue3","white"))(15)
@@ -712,8 +712,8 @@ dev.off()
 
 
 
-#### transfer the heatmap into boxplots and heatmap with only variance 
-########################################################################
+#### transfer the heatmap into boxplots (Figure 2B) and heatmap with only variance (Figure 2C) 
+################################################################################################
 data1 <- data.frame(value=c(as.vector(data[1:8,1:ncol(data)]),as.vector(data[9:16,1:ncol(data)]),
                             as.vector(data[17:24,1:ncol(data)]), as.vector(data[25:32,1:ncol(data)]),
                             as.vector(data[33:40,1:ncol(data)])), 
