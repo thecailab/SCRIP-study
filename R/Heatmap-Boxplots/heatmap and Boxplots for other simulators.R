@@ -1,5 +1,5 @@
 ## Below are R functions and detailed analysis steps to evaluate simulation data from outstanding methods in SCRIP (GP-trendedBCV, BGP-trendedBCV) and 
-## other simulators using MAD with five characteristics (i.e., gene-wise expression mean, variance, cell-wise zero proportion,
+## other simulators using MAD and absolute difference with five characteristics (i.e., gene-wise expression mean, variance, cell-wise zero proportion,
 ## gene-wise zero proportion, and library size) in eight real datasets (Xin, Klein, Tung, Camp,Tirosh, Zhou, Seale human, Seale mouse).
 
 
@@ -17,7 +17,6 @@ gen_mean_variance <- function(data, type){
 }
 
 
-## Calculate library size
 gen_sum_cell_counts <- function(data,type){
   sum_cell_counts <- matrix(rep(0,2*ncol(data)),nrow=ncol(data))
   sum_cell_counts[,1] <- apply(data,2,sum)
@@ -28,7 +27,6 @@ gen_sum_cell_counts <- function(data,type){
 }
 
 
-## Calculate zero proportion per gene
 gen_meancounts_zeropercent <- function(data,type){
   mean_zero <- matrix(rep(0,4*nrow(data)),nrow=nrow(data))
   mean_zero[,1] <- apply(data,1,mean)
@@ -41,7 +39,6 @@ gen_meancounts_zeropercent <- function(data,type){
 }
 
 
-## Calculate zero proportion per cell
 gen_meancounts_zeropercent_percell <- function(data,type){
   mean_zero <- matrix(rep(0,3*ncol(data)),nrow=ncol(data))
   mean_zero[,1] <- apply(data==0,2,sum)
@@ -54,14 +51,9 @@ gen_meancounts_zeropercent_percell <- function(data,type){
 
 
 
-
-# Below We evaluated the performance of simulation data from outstanding methods in SCRIP (GP-trendedBCV, BGP-trendedBCV) and other simulators
-# to recover the key characteristics in real datasets. Characteristics included gene-wise expression mean, variance, cell-wise zero proportion,
-# gene-wise zero proportion, and library size. To know more details about how to use SCRIP generate these simulation data,  # 
-# you can check https://github.com/thecailab/SCRIP/blob/main/vignettes/SCRIPsimu.pdf #
-
-
-Gen_heatmatdata <- function(expre_data_params,simu_GP,simu_BGP, simu_scDesign,simu_scDD,simu_SPARSim,simu_powsimR,simu_dyngen,simu_SymSim){
+### Method="MAD" or Method="abs diff"
+Gen_heatmatdata <- function(expre_data_params,simu_GP,simu_BGP, simu_scDesign,simu_scDD,simu_SPARSim,simu_powsimR,simu_dyngen,simu_SymSim,
+                            method){
   
   index <- 1:min(ncol(simu_GP),ncol(simu_BGP),ncol(simu_scDesign),ncol(simu_scDD),ncol(simu_SPARSim),ncol(simu_powsimR),ncol(simu_dyngen),ncol(simu_SymSim))
   expre_data_params <- expre_data_params[,index]
@@ -111,7 +103,12 @@ Gen_heatmatdata <- function(expre_data_params,simu_GP,simu_BGP, simu_scDesign,si
     data1 <- data1[order(data1$mean),]
     real_data <- final_mean_variance[which(final_mean_variance$Type=="Real"),]
     real_data <- real_data[order(real_data$mean),]
-    data1$Diff_mean <- abs(log2(pmax(data1$mean,0.1)/pmax(real_data$mean,0.1)))
+    if (method=="MAD") {
+      data1$Diff_mean <- abs(log2(pmax(data1$mean,0.1)/pmax(real_data$mean,0.1)))
+    }
+    if (method="abs diff"){
+      data1$Diff_mean <- abs((data1$mean)-(real_data$mean))
+    }
     final_mean_variance_diffrankmean <- rbind(final_mean_variance_diffrankmean,data1)
   }
   final_mean_variance_diffrankmean <- final_mean_variance_diffrankmean[final_mean_variance_diffrankmean$Type!="Real",]
@@ -131,7 +128,12 @@ Gen_heatmatdata <- function(expre_data_params,simu_GP,simu_BGP, simu_scDesign,si
     data1 <- data1[order(data1$variance),]
     real_data <- final_mean_variance[which(final_mean_variance$Type=="Real"),]
     real_data <- real_data[order(real_data$variance),]
-    data1$Diff_variance <-  abs(log2(pmax(data1$variance,0.1)/pmax(real_data$variance,0.1)))
+    if (method=="MAD") {
+      data1$Diff_variance <-  abs(log2(pmax(data1$variance,0.1)/pmax(real_data$variance,0.1)))
+    }
+    if (method="abs diff"){
+      data1$Diff_variance <-  abs((data1$variance)-(real_data$variance))
+    }
     final_mean_variance_diffrankvariance <- rbind(final_mean_variance_diffrankvariance,data1)
   }
   final_mean_variance_diffrankvariance <- final_mean_variance_diffrankvariance[final_mean_variance_diffrankvariance$Type!="Real",]
@@ -177,7 +179,12 @@ Gen_heatmatdata <- function(expre_data_params,simu_GP,simu_BGP, simu_scDesign,si
     data1 <- final_sum_counts[final_sum_counts$Type==i,]
     data1 <- data1[sample(1:nrow(data1),min(nrow(data1),nrow(real_data))),]
     data1 <- data1[order(data1$Sum_count),]
-    data1$diffranklibrarysize <- abs(log2(pmax(data1$Sum_count,1)/pmax(real_data$Sum_count,1)))
+    if (method=="MAD") {
+      data1$diffranklibrarysize <- abs(log2(pmax(data1$Sum_count,1)/pmax(real_data$Sum_count,1)))
+    }
+    if (method="abs diff"){
+      data1$diffranklibrarysize <- abs((data1$Sum_count)-(real_data$Sum_count))
+    }
     final_librarysize_diffranklibrarysize <- rbind(final_librarysize_diffranklibrarysize,data1)
   }
   final_librarysize_diffranklibrarysize <- final_librarysize_diffranklibrarysize[final_librarysize_diffranklibrarysize$Type!="Real",]
@@ -250,7 +257,12 @@ Gen_heatmatdata <- function(expre_data_params,simu_GP,simu_BGP, simu_scDesign,si
       data1 <- data1[order(data1$Mean_count),]
       real_data <- final_mean_zero[which(final_mean_zero$Type=="Real"),]
       real_data <- real_data[order(real_data$Mean_count),]
-      data1$Diff_zero <- abs(log2(pmax(data1$Percentage_zeros,0.1)/pmax(real_data$Percentage_zeros,0.1)))
+      if (method=="MAD") {
+        data1$Diff_zero <- abs(log2(pmax(data1$Percentage_zeros,0.1)/pmax(real_data$Percentage_zeros,0.1)))
+      }
+      if (method="abs diff"){
+        data1$Diff_zero <- abs((data1$Percentage_zeros)-(real_data$Percentage_zeros))
+      }
       final_mean_zero_rankcount <- rbind(final_mean_zero_rankcount,data1)
     }
     final_mean_zero_rankcount <- final_mean_zero_rankcount[final_mean_zero_rankcount$Type!="Real",]
@@ -275,7 +287,14 @@ Gen_heatmatdata <- function(expre_data_params,simu_GP,simu_BGP, simu_scDesign,si
       data1 <- data1[order(data1$Percentage_zeros),]
       real_data <- final_mean_zero[which(final_mean_zero$Type=="Real"),]
       real_data <- real_data[order(real_data$Percentage_zeros),]
-      data2 <- as.data.frame(abs(log2((pmax(data1$Percentage_zeros[min(nrow(data1),nrow(real_data))],0.1)/pmax(real_data$Percentage_zeros[min(nrow(data1),nrow(real_data))],0.1)))))
+      if (method=="MAD") {
+        data2 <- as.data.frame(abs(log2((pmax(data1$Percentage_zeros[min(nrow(data1),nrow(real_data))],0.1)/pmax(real_data$Percentage_zeros[min(nrow(data1),nrow(real_data))],0.1)))))
+      }
+      if (method="abs diff"){
+        data2 <- as.data.frame(abs((data1$Percentage_zeros[min(nrow(data1),nrow(real_data))])-
+                                     (real_data$Percentage_zeros[min(nrow(data1),nrow(real_data))])))
+        
+      }
       colnames(data2) <- "Diff_zero"
       data2$Type <- i
       final_mean_zero_rankcount <- rbind(final_mean_zero_rankcount,data2)
@@ -333,61 +352,58 @@ Fun_heatmap_data <- function(name){
                                   simu_powsimR=simu_powsimR, 
                                   simu_SymSim=simu_SymSim,
                                   simu_dyngen=simu_dyngen+0.01)
-  save(heatmap_data, file="heatmap_data.RData")
+  save(heatmap_data, file="heatmap_data_mean.RData")
   return(heatmap_data)
 }
 
 
+Heatmap_data_MAD_MuSiC <- Fun_heatmap_data(name="MuSiC", method="MAD")
+Heatmap_data_MAD_Camp <- Fun_heatmap_data(name="Camp", method="MAD")
+Heatmap_data_MAD_Klein <- Fun_heatmap_data(name="Klein", method="MAD")
+Heatmap_data_MAD_Tung <- Fun_heatmap_data(name="Tung", method="MAD")
+Heatmap_data_MAD_Tirosh <- Fun_heatmap_data(name="Tirosh", method="MAD")
+Heatmap_data_MAD_Zhou <- Fun_heatmap_data(name="Zhou", method="MAD")
+Heatmap_data_MAD_SealeH <- Fun_heatmap_data(name="Seale/Human", method="MAD")
+Heatmap_data_MAD_SealeM <- Fun_heatmap_data(name="Seale/Mice", method="MAD")
 
+Heatmap_data_absdiff_MuSiC <- Fun_heatmap_data(name="MuSiC", method="abs diff")
+Heatmap_data_absdiff_Camp <- Fun_heatmap_data(name="Camp", method="abs diff")
+Heatmap_data_absdiff_Klein <- Fun_heatmap_data(name="Klein", method="abs diff")
+Heatmap_data_absdiff_Tung <- Fun_heatmap_data(name="Tung", method="abs diff")
+Heatmap_data_absdiff_Tirosh <- Fun_heatmap_data(name="Tirosh", method="abs diff")
+Heatmap_data_absdiff_Zhou <- Fun_heatmap_data(name="Zhou", method="abs diff")
+Heatmap_data_absdiff_SealeH <- Fun_heatmap_data(name="Seale/Human", method="abs diff")
+Heatmap_data_absdiff_SealeM <- Fun_heatmap_data(name="Seale/Mice", method="abs diff")
 
-
-
-Heatmap_data_MuSiC <- Fun_heatmap_data(name="MuSiC")
-Heatmap_data_Camp <- Fun_heatmap_data(name="Camp")
-Heatmap_data_Klein <- Fun_heatmap_data(name="Klein")
-Heatmap_data_Tung <- Fun_heatmap_data(name="Tung")
-Heatmap_data_Tirosh <- Fun_heatmap_data(name="Tirosh")
-Heatmap_data_Zhou <- Fun_heatmap_data(name="Zhou")
-Heatmap_data_SealeH <- Fun_heatmap_data(name="Seale/Human")
-Heatmap_data_SealeM <- Fun_heatmap_data(name="Seale/Mice")
 
 dir <- c("E:\\DB\\Dropbox\\Qinfei\\Simulation of SC based on splatter\\Submition\\Bioinformatics\\Simulation data")
 
-Heatmap_data_MuSiC <- get(load(paste0(dir,"\\MuSiC\\heatmap_data.RData")))
-Heatmap_data_Camp <- get(load(paste0(dir,"\\Camp\\heatmap_data.RData")))
-Heatmap_data_Klein <- get(load(paste0(dir,"\\Klein\\heatmap_data.RData")))
-Heatmap_data_Tung <- get(load(paste0(dir,"\\Tung\\heatmap_data.RData")))
-Heatmap_data_Tirosh <- get(load(paste0(dir,"\\Tirosh\\heatmap_data.RData")))
-Heatmap_data_Zhou <- get(load(paste0(dir,"\\Zhou\\heatmap_data.RData")))
-Heatmap_data_SealeH <- get(load(paste0(dir,"\\Seale\\Human\\heatmap_data.RData")))
-Heatmap_data_SealeM <- get(load(paste0(dir,"\\Seale\\Mice\\heatmap_data.RData")))
+# Heatmap_data_MuSiC <- get(load(paste0(dir,"\\MuSiC\\heatmap_data.RData")))
+# Heatmap_data_Camp <- get(load(paste0(dir,"\\Camp\\heatmap_data.RData")))
+# Heatmap_data_Klein <- get(load(paste0(dir,"\\Klein\\heatmap_data.RData")))
+# Heatmap_data_Tung <- get(load(paste0(dir,"\\Tung\\heatmap_data.RData")))
+# Heatmap_data_Tirosh <- get(load(paste0(dir,"\\Tirosh\\heatmap_data.RData")))
+# Heatmap_data_Zhou <- get(load(paste0(dir,"\\Zhou\\heatmap_data.RData")))
+# Heatmap_data_SealeH <- get(load(paste0(dir,"\\Seale\\Human\\heatmap_data.RData")))
+# Heatmap_data_SealeM <- get(load(paste0(dir,"\\Seale\\Mice\\heatmap_data.RData")))
 
 
-
-
-
-#### Now plot the heatmap (Figure S2) of MAD with five characteristics for differert methods in SCRIP and eight datasets ####
-#############################################################################################################################
-
-Heatmap_data <- rbind(Heatmap_data_MuSiC,Heatmap_data_Klein,Heatmap_data_Tung,Heatmap_data_Camp,
-                      Heatmap_data_Tirosh,Heatmap_data_Zhou,Heatmap_data_SealeH,Heatmap_data_SealeM)
-Heatmap_data <- Heatmap_data[,-c(4,7)]
-rownames(Heatmap_data) <- paste("measure",1:40,sep="")
+Heatmap_data_MAD <- rbind(Heatmap_data_MAD_MuSiC,Heatmap_data_MAD_Klein,Heatmap_data_MAD_Tung,Heatmap_data_MAD_Camp,
+                      Heatmap_data_MAD_Tirosh,Heatmap_data_MAD_Zhou,Heatmap_data_MAD_SealeH,Heatmap_data_MAD_SealeM)
+Heatmap_data_MAD <- Heatmap_data_MAD[,-c(4,7)]
+rownames(Heatmap_data_MAD) <- paste("measure",1:40,sep="")
 # Heatmap_data<- t(scale(t(Heatmap_data),scale = F))
 cols = colorRampPalette(c("royalblue3","white"))(30)
 
 library(pheatmap)
-data <- Heatmap_data[c((0:7)*5+1,(0:7)*5+2,(0:7)*5+3,(0:7)*5+4,(0:7)*5+5),]
-
-
-
+data <- Heatmap_data_MAD[c((0:7)*5+1,(0:7)*5+2,(0:7)*5+3,(0:7)*5+4,(0:7)*5+5),]
 
 features <- data.frame(Features=rep(c("Mean","Variance","library size","Zeros per cell","Zeros per gene"),each=8))
 rownames(features) <- rownames(data)
 features$Features <- factor(features$Features, levels=c("Mean","Variance","library size","Zeros per cell","Zeros per gene"))
 
 setwd("E:\\DB\\Dropbox\\Qinfei\\Simulation of SC based on splatter\\Submition\\Bioinformatics\\Simulation data")
-pdf("Heatmap comparion other simulators for eight datasets log2 FC3.pdf",width=15,height=17)
+pdf("Heatmap comparion other simulators for eight datasets log2 FC3333.pdf",width=15,height=17)
 pheatmap(data,color=cols,cluster_rows=F,cluster_cols=F,
          fontsize = 25,angle_col=45,annotation_row=features,
          labels_row = rep(c("Xin","Klein","Tung","Camp","Tirosh","Zhou","Seale(Human)","Seale(Mice)"),5),cellheight=25, cellwidth=45)
@@ -401,17 +417,14 @@ dev.off()
 data1 <- data.frame(value=c(as.vector(data[1:8,1:ncol(data)]),as.vector(data[9:16,1:ncol(data)]),
                             as.vector(data[17:24,1:ncol(data)]), as.vector(data[25:32,1:ncol(data)]),
                             as.vector(data[33:40,1:ncol(data)])), 
-                    type=rep(c("Mean","Variance","library size","Zeros per cell","Zeros per gene"),each=48))
+                    type=rep(c("Mean","Variance","library size","Zeros per cell","Zeros per gene"),each=8))
 data1$type <- factor(data1$type, levels = c(c("Mean","Variance","library size","Zeros per cell","Zeros per gene")))
 
 
 
-#### transfer the heatmap into boxplots (Figure 3B) and heatmap with only variance (Figure 3C) 
-################################################################################################
-
 library("ggplot2")
 setwd("E:\\DB\\Dropbox\\Qinfei\\Simulation of SC based on splatter\\Submition\\Bioinformatics\\Simulation data")
-pdf("other simulators boxplot for different features.pdf",height=8,width=6)
+pdf("other simulators boxplot for different features MAE.pdf",height=8,width=6)
 ggplot(data = data1, aes(x=type,y=value)) +
   labs(y="MAD", x = "Type")+
   geom_boxplot(lwd=1,fatten=1)+
@@ -430,12 +443,42 @@ dev.off()
 
 
 
+
+
+
+
+
+
+dir <- c("E:\\DB\\Dropbox\\Qinfei\\Simulation of SC based on splatter\\Submition\\Bioinformatics\\Simulation data")
+
+# Heatmap_data_MuSiC <- get(load(paste0(dir,"\\MuSiC\\heatmap_data_meanabsdiff.RData")))
+# Heatmap_data_Camp <- get(load(paste0(dir,"\\Camp\\heatmap_data_meanabsdiff.RData")))
+# Heatmap_data_Klein <- get(load(paste0(dir,"\\Klein\\heatmap_data_meanabsdiff.RData")))
+# Heatmap_data_Tung <- get(load(paste0(dir,"\\Tung\\heatmap_data_meanabsdiff.RData")))
+# Heatmap_data_Tirosh <- get(load(paste0(dir,"\\Tirosh\\heatmap_data_meanabsdiff.RData")))
+# Heatmap_data_Zhou <- get(load(paste0(dir,"\\Zhou\\heatmap_data_meanabsdiff.RData")))
+# Heatmap_data_SealeH <- get(load(paste0(dir,"\\Seale\\Human\\heatmap_data_meanabsdiff.RData")))
+# Heatmap_data_SealeM <- get(load(paste0(dir,"\\Seale\\Mice\\heatmap_data_meanabsdiff.RData")))
+
+Heatmap_data_absdiff <- rbind(Heatmap_data_absdiff_MuSiC,Heatmap_data_absdiff_Klein,Heatmap_data_absdiff_Tung,Heatmap_data_absdiff_Camp,
+                          Heatmap_data_absdiff_Tirosh,Heatmap_data_absdiff_Zhou,Heatmap_data_absdiff_SealeH,Heatmap_data_absdiff_SealeM)
+Heatmap_data_absdiff <- Heatmap_data_absdiff[,-c(4,7)]
+rownames(Heatmap_data_absdiff) <- paste("measure",1:40,sep="")
+Heatmap_data_absdiff <- t(scale(t(Heatmap_data_absdiff)))
+
+cols = colorRampPalette(c("royalblue3","white"))(30)
+
+library(pheatmap)
+data <- Heatmap_data_absdiff[c((0:7)*5+1,(0:7)*5+2,(0:7)*5+3,(0:7)*5+4,(0:7)*5+5),]
+
+
 data2 <- data[c(9:16),]
 setwd("E:\\DB\\Dropbox\\Qinfei\\Simulation of SC based on splatter\\Submition\\Bioinformatics\\Simulation data")
-pdf("Heatmap comparion other simulators for variance using eight datasets log2 FC3.pdf",width=7,height=6)
+pdf("Heatmap comparion other simulators for variance using eight datasets log2 FC3 meanabsdiff.pdf",width=7,height=6)
 pheatmap(data2,color=cols,cluster_rows=F,cluster_cols=F,
          fontsize = 15,angle_col=45,
          labels_row = rep(c("Xin","Klein","Tung","Camp","Tirosh","Zhou","Seale(Human)","Seale(Mice)"),1),cellheight=35, cellwidth=35)
 dev.off()
+
 
 

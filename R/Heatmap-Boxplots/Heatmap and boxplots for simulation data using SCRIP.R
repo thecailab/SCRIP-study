@@ -1,4 +1,4 @@
-## Below are R functions and detailed analysis steps to evaluate simulation data from SCRIP using MAD with five characteristics 
+## Below are R functions and detailed analysis steps to evaluate simulation data from SCRIP using MAD and absolute difference with five characteristics 
 ## (i.e., gene-wise expression mean, variance, cell-wise zero proportion, gene-wise zero proportion, and library size) in
 ## eight real datasets (Xin, Klein, Tung, Camp, Tirosh, Zhou, Seale human, Seale mouse).
 
@@ -6,7 +6,7 @@
 ##plot the mean variance plot using CPM
 gen_mean_variance <- function(data,type){
   library(edgeR)
-  data <- cpm(data,log = T,prior.count = 1)
+  data <- round(cpm(data,log = T,prior.count = 1),digits=1)
   mean_variance <- matrix(rep(0,3*nrow(data)),nrow=nrow(data))
   mean_variance[,1] <- apply(data,1,mean)
   mean_variance[,2] <- apply(data,1,var)
@@ -16,7 +16,7 @@ gen_mean_variance <- function(data,type){
   return(mean_variance) 
 }
 
-## Calculate library size
+
 gen_sum_cell_counts <- function(data,type){
   sum_cell_counts <- matrix(rep(0,2*ncol(data)),nrow=ncol(data))
   sum_cell_counts[,1] <- apply(data,2,sum)
@@ -27,7 +27,6 @@ gen_sum_cell_counts <- function(data,type){
 }
 
 
-## Calculate zero proportion per gene
 gen_meancounts_zeropercent <- function(data,type){
   mean_zero <- matrix(rep(0,4*nrow(data)),nrow=nrow(data))
   mean_zero[,1] <- apply(data,1,mean)
@@ -40,7 +39,6 @@ gen_meancounts_zeropercent <- function(data,type){
 }
 
 
-## Calculate zero proportion per cell
 gen_meancounts_zeropercent_percell <- function(data,type){
   mean_zero <- matrix(rep(0,3*ncol(data)),nrow=ncol(data))
   mean_zero[,1] <- apply(data==0,2,sum)
@@ -54,27 +52,30 @@ gen_meancounts_zeropercent_percell <- function(data,type){
 
 
 
-Gen_heatmatdata <- function(res){
+
+### Method="MAD" or Method="abs diff"
+Gen_heatmatdata <- function(res, method){
   expre_data_params <- res$counts
-  nobursting <- res$GP_trendedBCV
-  bursting <- res$BGP_trendedBCV
-  simu_common_burst <- res$BGP_commonBCV
-  simu_common_noburst <- res$GP_commonBCV
-  simu_noBCV_burst <- res$BP
+  GP_commonBCV <- res$GP_commonBCV
+  GP_trendedBCV <- res$GP_trendedBCV
+  BP <- res$BP
+  BGP_trendedBCV <- res$BGP_trendedBCV
+  BGP_commonBCV <- res$BGP_commonBCV
+  
   ##plot the mean variance plot uisng CPM
   real_mean_variance <- gen_mean_variance(data=expre_data_params,type="Real")
-  simu_common_noburstring_mean_variance <- gen_mean_variance(data=simu_common_noburst,type="GP_commonBCV")
-  simu_nobursting_mean_variance <- gen_mean_variance(data=nobursting,type="GP_trendedBCV")
-  simu_noBCV_burst_mean_variance <- gen_mean_variance(data=simu_noBCV_burst,type="BP")
-  simu_common_burstring_mean_variance <- gen_mean_variance(data=simu_common_burst,type="BGP_commonBCV")
-  simu_bursting_mean_variance <- gen_mean_variance(data=bursting, type="BGP_trendedBCV")
+  simu_GP_commonBCV_mean_variance <- gen_mean_variance(data=GP_commonBCV,type="GP_commonBCV")
+  simu_GP_trendedBCV_mean_variance <- gen_mean_variance(data=GP_trendedBCV,type="GP_trendedBCV")
+  simu_BP_mean_variance <- gen_mean_variance(data=BP,type="BP")
+  simu_BGP_commonBCV_mean_variance <- gen_mean_variance(data=BGP_commonBCV,type="BGP_commonBCV")
+  simu_BGP_trendedBCV_mean_variance <- gen_mean_variance(data=BGP_trendedBCV, type="BGP_trendedBCV")
   
   final_mean_variance6 <- rbind(real_mean_variance,
-                                simu_noBCV_burst_mean_variance,
-                                simu_common_noburstring_mean_variance,
-                                simu_nobursting_mean_variance,
-                                simu_common_burstring_mean_variance,
-                                simu_bursting_mean_variance)
+                                simu_GP_commonBCV_mean_variance,
+                                simu_GP_trendedBCV_mean_variance,
+                                simu_BP_mean_variance,
+                                simu_BGP_commonBCV_mean_variance,
+                                simu_BGP_trendedBCV_mean_variance)
   final_mean_variance6$Type <- factor(final_mean_variance6$Type,levels=c("Real","GP_commonBCV",
                                                                          "GP_trendedBCV","BP",
                                                                          "BGP_commonBCV","BGP_trendedBCV"))
@@ -90,9 +91,17 @@ Gen_heatmatdata <- function(res){
     data1 <- data1[order(data1$mean),]
     real_data <- final_mean_variance[which(final_mean_variance$Type=="Real"),]
     real_data <- real_data[order(real_data$mean),]
-    data1$Diff_mean <- abs(log2(pmax(data1$mean,0.0000001)/pmax(real_data$mean,0.0000001)))
+    zero.index <- real_data$mean!=0
+    if (method=="MAD") {
+      data1$Diff_mean <- abs(log2(pmax(data1$mean,0.0000001)/pmax(real_data$mean,0.0000001)))
+    }
+    if (method="abs diff"){
+      data1$Diff_mean <- abs((data1$mean)-(real_data$mean))
+    }
     final_mean_variance_diffrankmean <- rbind(final_mean_variance_diffrankmean,data1)
   }
+  
+  
   final_mean_variance_diffrankmean <- final_mean_variance_diffrankmean[final_mean_variance_diffrankmean$Type!="Real",]
   
   mean <- aggregate(final_mean_variance_diffrankmean$Diff_mean, list(final_mean_variance_diffrankmean$Type), median)
@@ -102,6 +111,8 @@ Gen_heatmatdata <- function(res){
                  "GP_trendedBCV","BP",
                  "BGP_commonBCV","BGP_trendedBCV"),c("x","Mean")]
   
+  
+  
   ###describe the variance_rank_diff to real plot
   final_mean_variance <- final_mean_variance6
   final_mean_variance_diffrankvariance <- NULL
@@ -110,7 +121,14 @@ Gen_heatmatdata <- function(res){
     data1 <- data1[order(data1$variance),]
     real_data <- final_mean_variance[which(final_mean_variance$Type=="Real"),]
     real_data <- real_data[order(real_data$variance),]
-    data1$Diff_variance <-  abs(log2(pmax(data1$variance,0.0000001)/pmax(real_data$variance,0.0000001)))
+    message(mean(data1$variance))
+    if (method=="MAD") {
+      data1$Diff_variance <-  abs(log2(pmax(data1$variance,0.001)/pmax(real_data$variance,0.001)))
+    }
+    if (method="abs diff"){
+      data1$Diff_variance <-  abs((data1$variance)-(real_data$variance))
+    }
+    
     final_mean_variance_diffrankvariance <- rbind(final_mean_variance_diffrankvariance,data1)
   }
   final_mean_variance_diffrankvariance <- final_mean_variance_diffrankvariance[final_mean_variance_diffrankvariance$Type!="Real",]
@@ -121,22 +139,22 @@ Gen_heatmatdata <- function(res){
   variance <- variance[c("GP_commonBCV",
                          "GP_trendedBCV","BP",
                          "BGP_commonBCV","BGP_trendedBCV"),c("x","Variance")]
-
+  
   
   ##plot the library size (sum counts for each cell) boxplot
   real_sum_counts <- gen_sum_cell_counts(data=expre_data_params,type="Real")
-  simu_bursting_sum_counts <- gen_sum_cell_counts(data=bursting, type="BGP_trendedBCV")
-  simu_nobursting_sum_counts <- gen_sum_cell_counts(data=nobursting,type="GP_trendedBCV")
-  simu_common_bursting_sum_counts <- gen_sum_cell_counts(data=simu_common_burst,type="BGP_commonBCV")
-  simu_common_nobursting_sum_counts <- gen_sum_cell_counts(data=simu_common_noburst,type="GP_commonBCV")
-  simu_noBCV_burst_sum_counts <- gen_sum_cell_counts(data=simu_noBCV_burst,type="BP")
+  simu_BGP_trendedBCV_sum_counts <- gen_sum_cell_counts(data=BGP_trendedBCV, type="BGP_trendedBCV")
+  simu_GP_trendedBCV_sum_counts <- gen_sum_cell_counts(data=GP_trendedBCV,type="GP_trendedBCV")
+  simu_BGP_commonBCV_sum_counts <- gen_sum_cell_counts(data=BGP_commonBCV,type="BGP_commonBCV")
+  simu_GP_commonBCV_sum_counts <- gen_sum_cell_counts(data=GP_commonBCV,type="GP_commonBCV")
+  simu_BP_sum_counts <- gen_sum_cell_counts(data=BP,type="BP")
   
   final_sum_counts <- rbind(real_sum_counts,
-                            simu_noBCV_burst_sum_counts,
-                            simu_common_nobursting_sum_counts,
-                            simu_nobursting_sum_counts,
-                            simu_common_bursting_sum_counts,
-                            simu_bursting_sum_counts)
+                            simu_BP_sum_counts,
+                            simu_GP_commonBCV_sum_counts,
+                            simu_GP_trendedBCV_sum_counts,
+                            simu_BGP_commonBCV_sum_counts,
+                            simu_BGP_trendedBCV_sum_counts)
   final_sum_counts$Type <- factor(final_sum_counts$Type,levels=c("Real","GP_commonBCV",
                                                                  "GP_trendedBCV","BP",
                                                                  "BGP_commonBCV","BGP_trendedBCV"))
@@ -151,7 +169,12 @@ Gen_heatmatdata <- function(res){
     data1 <- final_sum_counts[final_sum_counts$Type==i,]
     # data1 <- data1[sample(1:nrow(data1),min(nrow(data1),nrow(real_data))),]
     data1 <- data1[order(data1$Sum_count),]
-    data1$diffranklibrarysize <- abs(log2(pmax(data1$Sum_count,0.000001)/pmax(real_data$Sum_count,0.000001)))
+    if (method=="MAD") {
+      data1$diffranklibrarysize <- abs(log2(pmax(data1$Sum_count,0.000001)/pmax(real_data$Sum_count,0.000001)))
+    }
+    if (method="abs diff"){
+      data1$diffranklibrarysize <- abs((data1$Sum_count)-(real_data$Sum_count))
+    }
     final_librarysize_diffranklibrarysize <- rbind(final_librarysize_diffranklibrarysize,data1)
   }
   
@@ -164,41 +187,43 @@ Gen_heatmatdata <- function(res){
                                "GP_trendedBCV","BP",
                                "BGP_commonBCV","BGP_trendedBCV"),c("x","LibrarySize")]
   
+  
+  
   ##plot the Percentage zeros per gene  box plot
   real_mean_zero <- gen_meancounts_zeropercent(data=expre_data_params,type="Real")
-  simu_bursting_mean_zero <- gen_meancounts_zeropercent(data=bursting, type="BGP_trendedBCV")
-  simu_nobursting_mean_zero <- gen_meancounts_zeropercent(data=nobursting,type="GP_trendedBCV")
-  simu_common_burstring_mean_zero <- gen_meancounts_zeropercent(data=simu_common_burst,type="BGP_commonBCV")
-  simu_common_noburstring_mean_zero <- gen_meancounts_zeropercent(data=simu_common_noburst,type="GP_commonBCV")
-  simu_noBCV_burst_mean_zero <- gen_meancounts_zeropercent(data=simu_noBCV_burst,type="BP")
+  simu_BGP_trendedBCV_mean_zero <- gen_meancounts_zeropercent(data=BGP_trendedBCV, type="BGP_trendedBCV")
+  simu_GP_trendedBCV_mean_zero <- gen_meancounts_zeropercent(data=GP_trendedBCV,type="GP_trendedBCV")
+  simu_BGP_commonBCV_mean_zero <- gen_meancounts_zeropercent(data=BGP_commonBCV,type="BGP_commonBCV")
+  simu_GP_commonBCV_mean_zero <- gen_meancounts_zeropercent(data=GP_commonBCV,type="GP_commonBCV")
+  simu_BP_mean_zero <- gen_meancounts_zeropercent(data=BP,type="BP")
   
   final_mean_zero <- rbind(real_mean_zero,
-                            simu_noBCV_burst_mean_zero,
-                            simu_common_noburstring_mean_zero,
-                            simu_nobursting_mean_zero,
-                            simu_common_burstring_mean_zero,
-                            simu_bursting_mean_zero)
+                           simu_BP_mean_zero,
+                           simu_GP_commonBCV_mean_zero,
+                           simu_GP_trendedBCV_mean_zero,
+                           simu_BGP_commonBCV_mean_zero,
+                           simu_BGP_trendedBCV_mean_zero)
   final_mean_zero$Type <- factor(final_mean_zero$Type,levels=c("Real","GP_commonBCV",
-                                                                 "GP_trendedBCV","BP",
-                                                                 "BGP_commonBCV","BGP_trendedBCV"))
+                                                               "GP_trendedBCV","BP",
+                                                               "BGP_commonBCV","BGP_trendedBCV"))
   
   
   
   ##plot the Percentage zeros per cell
   real_percentage_zero_percell <- gen_meancounts_zeropercent_percell(data=expre_data_params,type="Real")
-  simu_bursting_percentage_zero_percell <- gen_meancounts_zeropercent_percell(data=bursting, type="BGP_trendedBCV")
-  simu_nobursting_percentage_zero_percell <- gen_meancounts_zeropercent_percell(data=nobursting,type="GP_trendedBCV")
-  simu_common_burstring_percentage_zero_percell <- gen_meancounts_zeropercent_percell(data=simu_common_burst,type="BGP_commonBCV")
-  simu_common_noburstring_percentage_zero_percell <- gen_meancounts_zeropercent_percell(data=simu_common_noburst,type="GP_commonBCV")
-  simu_noBCV_burst_percentage_zero_percell <- gen_meancounts_zeropercent_percell(data=simu_noBCV_burst,type="BP")
+  simu_BGP_trendedBCV_percentage_zero_percell <- gen_meancounts_zeropercent_percell(data=BGP_trendedBCV, type="BGP_trendedBCV")
+  simu_GP_trendedBCV_percentage_zero_percell <- gen_meancounts_zeropercent_percell(data=GP_trendedBCV,type="GP_trendedBCV")
+  simu_BGP_commonBCV_percentage_zero_percell <- gen_meancounts_zeropercent_percell(data=BGP_commonBCV,type="BGP_commonBCV")
+  simu_GP_commonBCV_percentage_zero_percell <- gen_meancounts_zeropercent_percell(data=GP_commonBCV,type="GP_commonBCV")
+  simu_BP_percentage_zero_percell <- gen_meancounts_zeropercent_percell(data=BP,type="BP")
   
   
   final_percentage_zero_percell <- rbind(real_percentage_zero_percell,
-                                         simu_noBCV_burst_percentage_zero_percell,
-                                         simu_common_noburstring_percentage_zero_percell,
-                                         simu_nobursting_percentage_zero_percell,
-                                         simu_common_burstring_percentage_zero_percell,
-                                         simu_bursting_percentage_zero_percell)
+                                         simu_BP_percentage_zero_percell,
+                                         simu_GP_commonBCV_percentage_zero_percell,
+                                         simu_GP_trendedBCV_percentage_zero_percell,
+                                         simu_BGP_commonBCV_percentage_zero_percell,
+                                         simu_BGP_trendedBCV_percentage_zero_percell)
   final_percentage_zero_percell$Type <- factor(final_percentage_zero_percell$Type,levels=c("Real","GP_commonBCV",
                                                                                            "GP_trendedBCV","BP",
                                                                                            "BGP_commonBCV","BGP_trendedBCV"))
@@ -212,8 +237,12 @@ Gen_heatmatdata <- function(res){
       data1 <- final_mean_zero[final_mean_zero$Type==i,]
       # data1$rank <- rank(data1$Mean_count)
       data1 <- data1[order(data1$counts_zeros),]
-
-      data1$Diff_zero <- abs(log2(pmax(data1$Percentage_zeros,0.000001)/pmax(real_data$Percentage_zeros,0.000001)))
+      if (method=="MAD") {
+        data1$Diff_zero <- abs(log2(pmax(data1$Percentage_zeros,0.000001)/pmax(real_data$Percentage_zeros,0.000001)))
+      }
+      if (method="abs diff"){
+        data1$Diff_zero <- abs((data1$Percentage_zeros)-(real_data$Percentage_zeros))
+      }
       final_mean_zero_rankcount <- rbind(final_mean_zero_rankcount,data1)
     }
     final_mean_zero_rankcount <- final_mean_zero_rankcount[final_mean_zero_rankcount$Type!="Real",]
@@ -239,7 +268,13 @@ Gen_heatmatdata <- function(res){
       data1 <- data1[order(data1$Percentage_zeros),]
       real_data <- final_mean_zero[which(final_mean_zero$Type=="Real"),]
       real_data <- real_data[order(real_data$Percentage_zeros),]
-      data1$Diff_zero_cell <- abs(log2(pmax(data1$Percentage_zeros,0.000001)/pmax(real_data$Percentage_zeros,0.000001)))
+      if (method=="MAD") {
+        data1$Diff_zero_cell <- abs(log2(pmax(data1$Percentage_zeros,0.000001)/pmax(real_data$Percentage_zeros,0.000001)))
+      }
+      if (method="abs diff"){
+        data1$Diff_zero_cell <- abs((data1$Percentage_zeros)-(real_data$Percentage_zeros))
+      }
+      
       # colnames(data2) <- "Diff_zero"
       # data2$Type <- i
       final_mean_zero_rankcount <- rbind(final_mean_zero_rankcount,data1)
@@ -274,15 +309,10 @@ Gen_heatmatdata <- function(res){
 
 
 
-# Below We evaluated the performance of simulation data from SCIRP to recover the key characteristics from #
-# real data. Characteristics included gene-wise expression mean, variance, cell-wise zero proportion, #
-# gene-wise zero proportion, and library size. To know more details about how to use SCRIP generate these # 
-# simulation data, you can check https://github.com/thecailab/SCRIP/blob/main/vignettes/SCRIPsimu.pdf # 
-
-
-################################################# Klein data ##############################################
-###########################################################################################################
-###########################################################################################################
+#######Klein data####
+#####################
+#####################
+#### Klein ####
 setwd("E:/DB/Dropbox/Qinfei/Simulation of SC based on splatter/Submition/Bioinformatics/Simulation data/Klein")
 library("Biobase")
 library('edgeR')
@@ -322,7 +352,8 @@ res$BGP_commonBCV <- BGP_commonBCV
 res$BGP_trendedBCV <- BGP_trendedBCV
 res$BP <- BP
 
-Heatmap_data_Klein <- Gen_heatmatdata(res)
+Heatmap_data_MAD_Klein <- Gen_heatmatdata(res, method = "MAD")
+Heatmap_data_absdiff_Klein <- Gen_heatmatdata(res, method = "abs diff")
 
 
 
@@ -368,7 +399,8 @@ res$BGP_commonBCV <- BGP_commonBCV
 res$BGP_trendedBCV <- BGP_trendedBCV
 res$BP <- BP
 
-Heatmap_data_Tung <- Gen_heatmatdata(res)
+Heatmap_data_MAD_Tung <- Gen_heatmatdata(res, method = "MAD")
+Heatmap_data_absdiff_Tung <- Gen_heatmatdata(res, method = "abs diff")
 
 
 
@@ -418,9 +450,8 @@ res$BGP_commonBCV <- BGP_commonBCV
 res$BGP_trendedBCV <- BGP_trendedBCV
 res$BP <- BP
 
-Heatmap_data_Camp <- Gen_heatmatdata(res)
-
-
+Heatmap_data_MAD_Camp <- Gen_heatmatdata(res, method = "MAD")
+Heatmap_data_absdiff_Camp <- Gen_heatmatdata(res, method = "abs diff")
 
 
 
@@ -463,8 +494,9 @@ res$BGP_commonBCV <- BGP_commonBCV
 res$BGP_trendedBCV <- BGP_trendedBCV
 res$BP <- BP
 
-Heatmap_data_MuSiC <- Gen_heatmatdata(res)
 
+Heatmap_data_MAD_MuSiC <- Gen_heatmatdata(res, method = "MAD")
+Heatmap_data_absdiff_MuSiC <- Gen_heatmatdata(res, method = "abs diff")
 
 
 
@@ -512,9 +544,8 @@ res$BGP_commonBCV <- BGP_commonBCV
 res$BGP_trendedBCV <- BGP_trendedBCV
 res$BP <- BP
 
-Heatmap_data_Tirosh <- Gen_heatmatdata(res)
-
-
+Heatmap_data_MAD_Tirosh <- Gen_heatmatdata(res, method = "MAD")
+Heatmap_data_absdiff_Tirosh <- Gen_heatmatdata(res, method = "abs diff")
 
 
 
@@ -563,8 +594,9 @@ res$BGP_commonBCV <- BGP_commonBCV
 res$BGP_trendedBCV <- BGP_trendedBCV
 res$BP <- BP
 
-Heatmap_data_Zhou <- Gen_heatmatdata(res)
 
+Heatmap_data_MAD_Zhou <- Gen_heatmatdata(res, method = "MAD")
+Heatmap_data_absdiff_Zhou <- Gen_heatmatdata(res, method = "abs diff")
 
 
 
@@ -613,7 +645,8 @@ res$BGP_commonBCV <- BGP_commonBCV
 res$BGP_trendedBCV <- BGP_trendedBCV
 res$BP <- BP
 
-Heatmap_data_Seale_Human <- Gen_heatmatdata(res)
+Heatmap_data_MAD_Seale_Human <- Gen_heatmatdata(res, method = "MAD")
+Heatmap_data_absdiff_Seale_Human <- Gen_heatmatdata(res, method = "abs diff")
 
 
 
@@ -664,7 +697,8 @@ res$BGP_commonBCV <- BGP_commonBCV
 res$BGP_trendedBCV <- BGP_trendedBCV
 res$BP <- BP
 
-Heatmap_data_Seale_Mice <- Gen_heatmatdata(res)
+Heatmap_data_MAD_Seale_Mice <- Gen_heatmatdata(res, method = "MAD")
+Heatmap_data_absdiff_Seale_Mice <- Gen_heatmatdata(res, method = "abs diff")
 
 
 
@@ -672,26 +706,22 @@ Heatmap_data_Seale_Mice <- Gen_heatmatdata(res)
 
 
 
-tran_data <- function(data){
-  for (i in 1:nrow(data)){
-    mean <- mean(data[i,])
-    
-  }
-}
-
-
-#### Now plot the heatmap (Figure S1) of MAD with five characteristics for differert methods in SCRIP and eight datasets ####
-#############################################################################################################################
 setwd("E:\\DB\\Dropbox\\Qinfei\\Simulation of SC based on splatter\\Submition\\Bioinformatics\\Simulation data")
-# load("Heatmap_data.RData")
-# load("Heatmap_data_mean.RData")
-Heatmap_data <- rbind(Heatmap_data_MuSiC,Heatmap_data_Klein,Heatmap_data_Tung,Heatmap_data_Camp,
-                      Heatmap_data_Tirosh,Heatmap_data_Zhou,Heatmap_data_Seale_Human,Heatmap_data_Seale_Mice)
-rownames(Heatmap_data) <- paste0(rep(c("Xin","Klein","Tung","Camp","Tirosh","Zhou","Seale(Human)","Seale(Mice)"),each=5),
+
+Heatmap_data_MAD <- rbind(Heatmap_data_MAD_MuSiC,Heatmap_data_MAD_Klein,Heatmap_data_MAD_Tung,Heatmap_data_MAD_Camp,
+                      Heatmap_data_MAD_Tirosh,Heatmap_data_MAD_Zhou,Heatmap_data_MAD_Seale_Human,Heatmap_data_MAD_Seale_Mice)
+
+save(Heatmap_data_MAD, file="Heatmap_data_MAD_median.RData")
+
+Heatmap_data_MAD <- get(load("Heatmap_data_MAD_median.RData"))
+rownames(Heatmap_data_MAD) <- paste0(rep(c("Xin","Klein","Tung","Camp","Tirosh","Zhou","Seale(Human)","Seale(Mice)"),each=5),
                                  rep(c("Mean","Variance","library size","Zeros per gene","Zeros per cell"),8))
 cols = colorRampPalette(c("royalblue3","white"))(15)
 
-data <- Heatmap_data[c((0:7)*5+1,(0:7)*5+2,(0:7)*5+3,(0:7)*5+4,(0:7)*5+5),]
+data <- Heatmap_data_MAD[c((0:7)*5+1,(0:7)*5+2,(0:7)*5+3,(0:7)*5+4,(0:7)*5+5),]
+
+# data.rank <- t(apply(data,1,rank))
+# data <- scale(data)
 # data <- t(scale(t(data), scale=F))
 
 library(pheatmap)
@@ -701,19 +731,16 @@ features$Features <- factor(features$Features, levels=c("Mean","Variance","libra
 
 colnames(data) <- c("GP-commonBCV(Splat)","GP-trendedBCV","BP","BP-commonBCV","BP-trendedBCV")
 
-pdf("Heatmap mean comparion models in SCRIP for eights datasets log2 FC.pdf",width=15,height=15)
+pdf("Heatmap mean comparion models in SCRIP for eights datasets log2 FC MAD_median.pdf",width=15,height=15)
 pheatmap(data,color=cols,cluster_rows=F,cluster_cols=F,
          fontsize = 20,angle_col=45,annotation_row=features,
-         labels_row = rep(c("Xin","Klein","Tung","Camp","Tirosh","Zhou","Seale(Human)","Seale(Mice)"),5),
+         labels_row = rep(c("Xin","Klein","Tung","Camp","Tirosh","Zhou","Seale(human)","Seale(mouse)"),5),
          cellheight=20, cellwidth = 60)
 dev.off()
 
 
-
-
-
-#### transfer the heatmap into boxplots (Figure 2B) and heatmap with only variance (Figure 2C) 
-################################################################################################
+#### transfer the heatmap into boxplots and heatmap with only variance 
+########################################################################
 data1 <- data.frame(value=c(as.vector(data[1:8,1:ncol(data)]),as.vector(data[9:16,1:ncol(data)]),
                             as.vector(data[17:24,1:ncol(data)]), as.vector(data[25:32,1:ncol(data)]),
                             as.vector(data[33:40,1:ncol(data)])), 
@@ -723,7 +750,7 @@ data1$type <- factor(data1$type, levels = c(c("Mean","Variance","library size","
 
 library("ggplot2")
 setwd("E:\\DB\\Dropbox\\Qinfei\\Simulation of SC based on splatter\\Submition\\Bioinformatics\\Simulation data")
-pdf("SCIRP boxplot for different features.pdf",height=8,width=6)
+pdf("SCIRP boxplot for different features MAD_median.pdf",height=8,width=6)
 ggplot(data = data1, aes(x=type,y=value)) +
   labs(y="MAD", x = "Type")+
   geom_boxplot(lwd=1,fatten=1)+
@@ -742,10 +769,28 @@ dev.off()
 
 
 
+
+
+Heatmap_data_absdiff <- rbind(Heatmap_data_absdiff_MuSiC,Heatmap_data_absdiff_Klein,Heatmap_data_absdiff_Tung,Heatmap_data_absdiff_Camp,
+                          Heatmap_data_absdiff_Tirosh,Heatmap_data_absdiff_Zhou,Heatmap_data_absdiff_Seale_Human,Heatmap_data_absdiff_Seale_Mice)
+
+save(Heatmap_data_absdiff, file="Heatmap_data_absdiff_mean.RData")
+
+Heatmap_data_absdiff <- get(load("Heatmap_data_absdiff_mean.RData"))
+
+Heatmap_data_absdiff <- t(scale(t(Heatmap_data_absdiff)))
+rownames(Heatmap_data_absdiff) <- paste0(rep(c("Xin","Klein","Tung","Camp","Tirosh","Zhou","Seale(human)","Seale(mouse)"),each=5),
+                                 rep(c("Mean","Variance","library size","Zeros per gene","Zeros per cell"),8))
+cols = colorRampPalette(c("royalblue3","white"))(15)
+
+data <- Heatmap_data_absdiff[c((0:7)*5+1,(0:7)*5+2,(0:7)*5+3,(0:7)*5+4,(0:7)*5+5),]
+colnames(data) <- c("GP-commonBCV(Splat)","GP-trendedBCV","BP","BP-commonBCV","BP-trendedBCV")
 data2 <- data[c(9:16),]
+# data.rank <- t(apply(data2,1,rank))
+
 setwd("E:\\DB\\Dropbox\\Qinfei\\Simulation of SC based on splatter\\Submition\\Bioinformatics\\Simulation data")
-pdf("Heatmap comparion SCRIP for variance using eight datasets log2 FC3.pdf",width=9,height=6)
+pdf("Heatmap comparion SCRIP for variance using eight datasets log2 FC3 absdiff mean scale.pdf",width=9,height=6)
 pheatmap(data2,color=cols,cluster_rows=F,cluster_cols=F,
          fontsize = 20,angle_col=45,
-         labels_row = rep(c("Xin","Klein","Tung","Camp","Tirosh","Zhou","Seale(Human)","Seale(Mice)"),1),cellheight=35, cellwidth=35)
+         labels_row = rep(c("Xin","Klein","Tung","Camp","Tirosh","Zhou","Seale(human)","Seale(mouse)"),1),cellheight=35, cellwidth=35)
 dev.off()
